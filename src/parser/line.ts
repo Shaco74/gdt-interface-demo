@@ -72,6 +72,7 @@ export function parseLogicalRow(rawRow: string, strictLengths: boolean): GdtPars
   // Calculate the expected physical length
   const expectedPhysical = LENGTH_DIGITS + FK_WIDTH + content.length + 2;
   if (strictLengths && declared !== expectedPhysical) {
+    // Throw an error if the declared length does not match the expected physical length
     throw new GdtParseError(
       `LENGTH ${declared} mismatches reconstructed row (${expectedPhysical}) for FK ${fieldId}.`,
     );
