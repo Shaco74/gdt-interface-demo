@@ -296,7 +296,7 @@
 						editierbare Maske</CardDescription
 					>
 				</CardHeader>
-				<CardContent class="grid flex-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+				<CardContent class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
 					<div class="flex min-h-0 flex-col gap-1">
 						<label
 							class="text-muted-foreground shrink-0 text-xs font-medium leading-none"
@@ -390,30 +390,29 @@
 							</label>
 						</div>
 					</div>
-					{#if lastParsedApi}
-						<div
-							class="text-muted-foreground sm:col-span-2 text-xs leading-relaxed"
+					</CardContent>
+			<CardFooter class="mt-auto text-muted-foreground text-xs leading-relaxed">
+				{#if lastParsedApi}
+					<div class="w-full">
+						Interpretiertes FK-Geschlecht:
+						<Badge
+							variant="outline"
+							class="border-primary/35 bg-primary/8 text-primary font-medium"
 						>
-							Interpretiertes FK-Geschlecht:
-							<Badge
-								variant="outline"
-								class="border-primary/35 bg-primary/8 text-primary font-medium"
-							>
-								{lastParsedApi.gender}
-							</Badge>
-							{#if lastParsedApi.birthDate}
-								&nbsp;&middot;&nbsp;<span
-									>Parsed DOB:&nbsp;<span class="font-mono">
-										{lastParsedApi.birthDate.slice(0, 10)}
-									</span></span
-								>
+							{lastParsedApi.gender}
+						</Badge>
+						{#if lastParsedApi.birthDate}
+							&nbsp;&middot;&nbsp;<span
+								>Parsed DOB:&nbsp;<span class="font-mono">
+									{lastParsedApi.birthDate.slice(0, 10)}
+								</span></span>
 							{/if}
-						</div>
-					{/if}
-				</CardContent>
-			</Card>
+					</div>
+				{/if}
+			</CardFooter>
+		</Card>
 
-			<Card
+		<Card
 				class="border-border/80 group/card flex h-full min-h-0 flex-col shadow-sm ring-1 ring-black/5"
 			>
 				<CardHeader class="border-border/60 border-b pb-4">
@@ -563,7 +562,7 @@
 						<ScrollArea
 							orientation="horizontal"
 							type="always"
-							class="border-border/80 h-[480px] w-full rounded-lg border bg-muted/30 shadow-inner"
+							class="border-border/80 [480px] w-full rounded-lg border bg-muted/30 shadow-inner"
 						>
 							{#if loading}
 								<div class="flex flex-col gap-2 p-4">
