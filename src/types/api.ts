@@ -47,13 +47,20 @@ export interface GdtWriteData {
 
 /** Configuration knobs for deterministic serialisation. */
 export interface WriteOptions {
+  // Encoding of the GDT file.
   readonly encoding?: 'ascii' | 'latin1';
-  readonly recordType?: '6310' | '6311';
-  readonly gdtVersion?: string;
-  readonly receiverDeviceId?: string;
-  readonly senderSystemId?: string;
-  readonly procedureDesignation?: string;
-  readonly examinationDateDdMmYyyy?: string;
+  // Record type of the GDT file. 6310 is the default record type. 6311 is the record type for alternative records.
+  readonly recordType?: '6310' | '6311'; 
+  // Version of the GDT standard.
+  readonly gdtVersion?: string; 
+  // ID of the receiver device.
+  readonly receiverDeviceId?: string; 
+  // ID of the sender system.
+  readonly senderSystemId?: string; 
+  // Designation of the procedure.
+  readonly procedureDesignation?: string; 
+  // Date of the examination in the format DDMMYYYY.
+  readonly examinationDateDdMmYyyy?: string; 
 }
 
 /**
