@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.wrangler/
+.turbo/
+.DS_Store
+*.log
+.env
+.env.*
+demo/.svelte-kit/
+demo/build/
+demo/dist/
+coverage/
+tmp/
