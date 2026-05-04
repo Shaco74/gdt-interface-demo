@@ -80,6 +80,12 @@ function mapFromBlob(raw: string, options: ReadOptions): GdtReadData {
   };
 }
 
+/**
+ * Freezes a map of string arrays into a read-only map of readonly string arrays.
+ *
+ * @param source - The map to freeze.
+ * @returns The frozen map.
+ */
 function freezeBuckets(source: Map<string, string[]>): ReadonlyMap<string, readonly string[]> {
   const clone = new Map<string, readonly string[]>();
   for (const [key, values] of source.entries()) {
