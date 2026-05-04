@@ -21,12 +21,6 @@
 	} from "$lib/components/ui/card/index.js";
 	import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 	import { Skeleton } from "$lib/components/ui/skeleton/index.js";
-	import {
-		Tabs,
-		TabsContent,
-		TabsList,
-		TabsTrigger,
-	} from "$lib/components/ui/tabs/index.js";
 	import Textarea from "$lib/components/ui/textarea/textarea.svelte";
 
 	/** Einzeilige Felder: kompakt, ohne Textarea-Mindesthöhe. */
@@ -106,7 +100,6 @@
 	}
 
 	let rawLatin1 = $state(sampleTrainingLatin1());
-	let tab = $state("befund");
 	let strictMode = $state(false);
 
 	let loading = $state(false);
@@ -218,7 +211,6 @@
 			rawLatin1 = atobSafeLatin1Utf8Bypass(wJson.latin1Base64 as string);
 
 			await parseRemote();
-			tab = "befund";
 		} catch (error) {
 			errorMessage =
 				error instanceof Error ? error.message : "Netzwerkfehler";
@@ -275,6 +267,31 @@
 				zum Debuggen peripherer Schnittstellen.
 			</p>
 		</header>
+
+		<div
+			class="border-border/80 flex flex-wrap items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm sm:px-5"
+		>
+			<Button
+				class="inline-flex gap-2"
+				onclick={roundTripViaServer}
+				disabled={loading}
+			>
+				{#if loading}
+					<LoaderCircleIcon
+						class="size-4 shrink-0 animate-spin"
+						aria-hidden
+					/>
+				{/if}
+				Serialisieren &amp; zurücklesen
+			</Button>
+			<Button
+				variant="outline"
+				onclick={parseRemote}
+				disabled={loading}
+			>
+				Nur Parsen (&gt; Schnittstelle)
+			</Button>
+		</div>
 
 		{#if errorMessage}
 			<p
@@ -489,148 +506,109 @@
 			</Card>
 		</div>
 
-		<Tabs bind:value={tab} class="flex flex-col gap-4">
-			<TabsList
-				class="bg-muted/55 border-border/80 inline-flex w-full flex-wrap gap-1 rounded-xl border p-1 shadow-sm sm:w-auto"
-			>
-				<TabsTrigger value="befund">Befund</TabsTrigger>
-				<TabsTrigger value="annotated"
-					>Annotierter Datensatz</TabsTrigger
+		<Card class="border-border/80 w-full shadow-sm ring-1 ring-black/5">
+			<CardHeader>
+				<CardTitle>Befunde (FK&nbsp;6228)</CardTitle>
+				<CardDescription
+					>Mehrzeiliger Langtext wird als mehrere FK-Lines
+					serialisiert</CardDescription
 				>
-			</TabsList>
+			</CardHeader>
+			<CardContent>
+				<Textarea
+					bind:value={befundeInput}
+					rows={10}
+					class="font-mono text-xs leading-snug"
+				/>
+			</CardContent>
+		</Card>
 
-			<TabsContent
-				value="befund"
-				class="flex flex-col gap-4 outline-none"
-			>
-				<Card class="border-border/80 shadow-sm ring-1 ring-black/5">
-					<CardHeader>
-						<CardTitle>Befunde (FK&nbsp;6228)</CardTitle>
-						<CardDescription
-							>Mehrzeiliger Langtext wird als mehrere FK-Lines
-							serialisiert</CardDescription
+		<Card
+			class="border-border/80 min-w-0 w-full shadow-sm ring-1 ring-black/5"
+		>
+			<CardHeader>
+				<CardTitle>Annotierter Datensatz</CardTitle>
+				<CardDescription>
+					Clientseitiges Mapping der physischen Zeilen mit
+					Feldbezeichnung (
+					<span class="font-mono">{annotatedLines.length}</span
+					>&nbsp;Lines)
+				</CardDescription>
+			</CardHeader>
+			<CardContent class="min-w-0">
+				<ScrollArea
+					orientation="both"
+					type="hover"
+					class="border-border/80 h-[min(480px,70vh)] w-full max-w-full rounded-lg border bg-muted/30 shadow-inner"
+				>
+					{#if loading}
+						<div class="flex w-full flex-col gap-2 p-4">
+							{#each Array(8) as _}
+								<Skeleton class="h-12 w-full max-w-full" />
+							{/each}
+						</div>
+					{:else}
+						<table
+							class="text-xs [&_td]:border-border/70 [&_td]:px-3 [&_td]:py-2.5 [&_th]:border-border/70 w-full min-w-0 table-fixed border-separate border-spacing-0 [&_td]:border-b [&_th]:border-b"
 						>
-					</CardHeader>
-					<CardContent>
-						<Textarea
-							bind:value={befundeInput}
-							rows={10}
-							class="font-mono text-xs leading-snug"
-						/>
-					</CardContent>
-					<CardFooter class="flex flex-wrap gap-3">
-						<Button
-							class="inline-flex gap-2"
-							onclick={roundTripViaServer}
-							disabled={loading}
-						>
-							{#if loading}
-								<LoaderCircleIcon
-									class="size-4 shrink-0 animate-spin"
-									aria-hidden
-								/>
-							{/if}
-							Serialisieren &amp; zurücklesen
-						</Button>
-						<Button
-							variant="outline"
-							onclick={parseRemote}
-							disabled={loading}
-						>
-							Nur Parsen (&gt; Schnittstelle)
-						</Button>
-					</CardFooter>
-				</Card>
-			</TabsContent>
-
-			<TabsContent
-				value="annotated"
-				class="flex flex-col gap-4 outline-none"
-			>
-				<Card class="border-border/80 shadow-sm ring-1 ring-black/5">
-					<CardHeader>
-						<CardTitle>Annotated GDT</CardTitle>
-						<CardDescription>
-							Clientseitiges Mapping der physischen Zeilen mit
-							Feldbezeichnung (
-							<span class="font-mono"
-								>{annotatedLines.length}</span
-							>&nbsp;Lines)
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<ScrollArea
-							orientation="horizontal"
-							type="always"
-							class="border-border/80 [480px] w-full rounded-lg border bg-muted/30 shadow-inner"
-						>
-							{#if loading}
-								<div class="flex flex-col gap-2 p-4">
-									{#each Array(8) as _}
-										<Skeleton class="h-12 w-[640px]" />
-									{/each}
-								</div>
-							{:else}
-								<table
-									class="text-xs [&_td]:border-border/70 [&_td]:px-3 [&_td]:py-2.5 [&_th]:border-border/70 min-w-[640px] border-separate border-spacing-0 [&_td]:border-b [&_th]:border-b"
-								>
-									<thead
-										class="bg-muted/80 text-foreground sticky top-0 z-[1]"
+							<colgroup>
+								<col class="w-[3rem]" />
+								<col class="w-[4.25rem]" />
+								<col class="w-[26%]" />
+								<col class="w-[3.5rem]" />
+								<col />
+							</colgroup>
+							<thead
+								class="bg-muted/80 text-foreground sticky top-0 z-[1]"
+							>
+								<tr>
+									<th class="font-semibold">#</th>
+									<th class="text-center font-semibold">FK</th>
+									<th class="text-center font-semibold"
+										>Benennung</th
 									>
-										<tr>
-											<th class="font-semibold">#</th>
-											<th class="text-left font-semibold"
-												>FK</th
-											>
-											<th class="text-left font-semibold"
-												>Benennung</th
-											>
-											<th class="text-right font-semibold"
-												>LLL</th
-											>
-											<th class="text-left font-semibold"
-												>Inhalt</th
-											>
-										</tr>
-									</thead>
-									<tbody>
-										{#each annotatedLines as line (line.lineNumber)}
-											<tr
-												class="even:bg-muted/20 hover:bg-muted/40 transition-colors"
-											>
-												<td
-													class="text-muted-foreground font-mono"
-													>{line.lineNumber}</td
+									<th class="text-center font-semibold"
+										>LLL</th
+									>
+									<th class="text-center font-semibold"
+										>Inhalt</th
+									>
+								</tr>
+							</thead>
+							<tbody>
+								{#each annotatedLines as line (line.lineNumber)}
+									<tr
+										class="even:bg-muted/20 hover:bg-muted/40 transition-colors"
+									>
+										<td class="text-muted-foreground font-mono"
+											>{line.lineNumber}</td
+										>
+										<td class="font-mono">{line.fieldId}</td>
+										<td
+											class="min-w-0 break-words leading-snug"
+											>{line.label}</td
+										>
+										<td
+											class="text-right font-mono tabular-nums"
+											>{line.declaredLength}</td
+										>
+										<td
+											class="min-w-0 break-all font-mono leading-snug"
+										>
+											{line.payloadPreview}
+											{#if line.parseIssue}
+												<span class="text-destructive block"
+													>{line.parseIssue}</span
 												>
-												<td class="font-mono"
-													>{line.fieldId}</td
-												>
-												<td class="leading-snug"
-													>{line.label}</td
-												>
-												<td class="text-right font-mono"
-													>{line.declaredLength}</td
-												>
-												<td
-													class="break-all whitespace-pre-wrap font-mono"
-												>
-													{line.payloadPreview}
-													{#if line.parseIssue}
-														<span
-															class="text-destructive block"
-															>{line.parseIssue}</span
-														>
-													{/if}
-												</td>
-											</tr>
-										{/each}
-									</tbody>
-								</table>
-							{/if}
-						</ScrollArea>
-					</CardContent>
-				</Card>
-			</TabsContent>
-		</Tabs>
+											{/if}
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					{/if}
+				</ScrollArea>
+			</CardContent>
+		</Card>
 	</div>
 </div>
