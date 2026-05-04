@@ -1,230 +1,241 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+import { onMount } from "svelte";
 
-	import { lookupFieldLabel } from '../../src/types/fields.js';
-	import { splitLogicalRows, parseLogicalRow } from '../../src/parser/line.js';
-	import { TRAINING_SAMPLE_LATIN1 } from '$lib/trainingSampleLatin1.js';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
-	import UploadIcon from '@lucide/svelte/icons/upload';
-	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import {
-		Card,
-		CardContent,
-		CardDescription,
-		CardFooter,
-		CardHeader,
-		CardTitle,
-	} from '$lib/components/ui/card/index.js';
-	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
-	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
-	import { Tabs, TabsContent, TabsList, TabsTrigger } from '$lib/components/ui/tabs/index.js';
-	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
+import { lookupFieldLabel } from "../../src/types/fields.js";
+import { splitLogicalRows, parseLogicalRow } from "../../src/parser/line.js";
+import { TRAINING_SAMPLE_LATIN1 } from "$lib/trainingSampleLatin1.js";
+import LoaderCircleIcon from "@lucide/svelte/icons/loader-circle";
+import UploadIcon from "@lucide/svelte/icons/upload";
+import { Badge } from "$lib/components/ui/badge/index.js";
+import { Button } from "$lib/components/ui/button/index.js";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from "$lib/components/ui/card/index.js";
+import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
+import { Skeleton } from "$lib/components/ui/skeleton/index.js";
+import {
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from "$lib/components/ui/tabs/index.js";
+import Textarea from "$lib/components/ui/textarea/textarea.svelte";
 
-	/** Einzeilige Felder: kompakt, ohne Textarea-Mindesthöhe. */
-	const fieldOneLineClass =
-		'border-input bg-background text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 h-9 w-full rounded-md border px-3 text-sm shadow-sm outline-none transition-[color,box-shadow] focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50';
+/** Einzeilige Felder: kompakt, ohne Textarea-Mindesthöhe. */
+const fieldOneLineClass =
+	"border-input bg-background text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 h-9 w-full rounded-md border px-3 text-sm shadow-sm outline-none transition-[color,box-shadow] focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50";
 
-	type GdtGender = 'male' | 'female' | 'unknown';
+type GdtGender = "male" | "female" | "unknown";
 
-	type ApiPatient = {
-		patientId: string;
-		firstName: string;
-		lastName: string;
-		birthDate: string | null;
-		gender: GdtGender;
-		rawFields: Record<string, string[]>;
-	};
+type ApiPatient = {
+	patientId: string;
+	firstName: string;
+	lastName: string;
+	birthDate: string | null;
+	gender: GdtGender;
+	rawFields: Record<string, string[]>;
+};
 
-	type AnnotatedLine = {
-		lineNumber: number;
-		fieldId: string;
-		label: string;
-		declaredLength: number;
-		payloadPreview: string;
-		parseIssue?: string;
-	};
+type AnnotatedLine = {
+	lineNumber: number;
+	fieldId: string;
+	label: string;
+	declaredLength: number;
+	payloadPreview: string;
+	parseIssue?: string;
+};
 
-	function sampleTrainingLatin1(): string {
-		return TRAINING_SAMPLE_LATIN1;
-	}
+function sampleTrainingLatin1(): string {
+	return TRAINING_SAMPLE_LATIN1;
+}
 
-	function isoDayToDdMmYyyy(iso: string): string | null {
-		const d = new Date(iso);
-		if (!Number.isFinite(d.getTime())) return null;
-		const dd = String(d.getUTCDate()).padStart(2, '0');
-		const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-		const yyyy = String(d.getUTCFullYear()).padStart(4, '0');
-		return `${dd}${mm}${yyyy}`;
-	}
+function isoDayToDdMmYyyy(iso: string): string | null {
+	const d = new Date(iso);
+	if (!Number.isFinite(d.getTime())) return null;
+	const dd = String(d.getUTCDate()).padStart(2, "0");
+	const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+	const yyyy = String(d.getUTCFullYear()).padStart(4, "0");
+	return `${dd}${mm}${yyyy}`;
+}
 
-	function genderGenderToCode(value: GdtGender): '' | '1' | '2' {
-		if (value === 'male') return '1';
-		if (value === 'female') return '2';
-		return '';
-	}
+function genderGenderToCode(value: GdtGender): "" | "1" | "2" {
+	if (value === "male") return "1";
+	if (value === "female") return "2";
+	return "";
+}
 
-	function annotateDocument(gdtLatin1: string): AnnotatedLine[] {
-		const rows = splitLogicalRows(gdtLatin1);
-		const out: AnnotatedLine[] = [];
-		for (let i = 0; i < rows.length; i++) {
-			const idx = i + 1;
-			try {
-				const parsedRow = parseLogicalRow(rows[i]!, false);
-				const preview =
-					parsedRow.content.length > 120 ? `${parsedRow.content.slice(0, 117)}…` : parsedRow.content;
-				out.push({
-					lineNumber: idx,
-					fieldId: parsedRow.fieldId,
-					label: lookupFieldLabel(parsedRow.fieldId),
-					declaredLength: parsedRow.declaredTotalLength,
-					payloadPreview: preview,
-				});
-			} catch {
-				out.push({
-					lineNumber: idx,
-					fieldId: '????',
-					label: 'Konnte nicht gelesen werden',
-					declaredLength: 0,
-					payloadPreview: rows[i]?.slice(0, 140) ?? '',
-					parseIssue: 'Zeilenrahmen entspricht keiner erwarteten LLL+FK+Inhalt‑Struktur.',
-				});
-			}
-		}
-		return out;
-	}
-
-	let rawLatin1 = $state(sampleTrainingLatin1());
-	let tab = $state('befund');
-	let strictMode = $state(false);
-
-	let loading = $state(false);
-	let errorMessage = $state<string | null>(null);
-
-	let patientIdInput = $state('2');
-	let firstNameInput = $state('Hans');
-	let lastNameInput = $state('Mustermann');
-	let birthDdMmYyyy = $state('01011977');
-	let genderWrite = $state<'' | '1' | '2'>('1');
-	let befundeInput = $state(
-		'Sinusrhythmus, normale PQ-Zeit, keine Hochspannungszeichen.\nZweite Zeile: Verlauf unauffällig.',
-	);
-
-	type ParsedSnapshot =
-		| ApiPatient
-		| undefined;
-
-	let lastParsedApi = $state<ParsedSnapshot>(undefined);
-
-	let fileInputEl = $state<HTMLInputElement | null>(null);
-
-	const annotatedLines = $derived.by(() => annotateDocument(rawLatin1));
-
-	function applyParsedToEditors(data: ApiPatient): void {
-		patientIdInput = data.patientId ?? '';
-		firstNameInput = data.firstName ?? '';
-		lastNameInput = data.lastName ?? '';
-		birthDdMmYyyy = data.birthDate ? isoDayToDdMmYyyy(data.birthDate) ?? '' : '';
-		const code = genderGenderToCode(data.gender ?? 'unknown');
-		genderWrite = code === '' ? '' : code;
-		const fk6228 = [...(data.rawFields['6228'] ?? [])];
-		befundeInput = fk6228.join('\n') || befundeInput;
-	}
-
-	async function parseRemote(): Promise<void> {
-		loading = true;
-		errorMessage = null;
+function annotateDocument(gdtLatin1: string): AnnotatedLine[] {
+	const rows = splitLogicalRows(gdtLatin1);
+	const out: AnnotatedLine[] = [];
+	for (let i = 0; i < rows.length; i++) {
+		const idx = i + 1;
 		try {
-			const res = await fetch(`/api/read?strict=${strictMode ? '1' : '0'}`, {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ gdtText: rawLatin1 }),
+			const parsedRow = parseLogicalRow(rows[i]!, false);
+			const preview =
+				parsedRow.content.length > 120
+					? `${parsedRow.content.slice(0, 117)}…`
+					: parsedRow.content;
+			out.push({
+				lineNumber: idx,
+				fieldId: parsedRow.fieldId,
+				label: lookupFieldLabel(parsedRow.fieldId),
+				declaredLength: parsedRow.declaredTotalLength,
+				payloadPreview: preview,
 			});
-			const body = await res.json();
-			if (!res.ok || !body?.ok) {
-				errorMessage = body?.error ?? `HTTP ${res.status}`;
-				lastParsedApi = undefined;
-				return;
-			}
-			const data = body.data as ApiPatient;
-			lastParsedApi = data;
-			applyParsedToEditors(data);
-		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Netzwerkfehler';
+		} catch {
+			out.push({
+				lineNumber: idx,
+				fieldId: "????",
+				label: "Konnte nicht gelesen werden",
+				declaredLength: 0,
+				payloadPreview: rows[i]?.slice(0, 140) ?? "",
+				parseIssue:
+					"Zeilenrahmen entspricht keiner erwarteten LLL+FK+Inhalt‑Struktur.",
+			});
+		}
+	}
+	return out;
+}
+
+let rawLatin1 = $state(sampleTrainingLatin1());
+let tab = $state("befund");
+let strictMode = $state(false);
+
+let loading = $state(false);
+let errorMessage = $state<string | null>(null);
+
+let patientIdInput = $state("2");
+let firstNameInput = $state("Hans");
+let lastNameInput = $state("Mustermann");
+let birthDdMmYyyy = $state("01011977");
+let genderWrite = $state<"" | "1" | "2">("1");
+let befundeInput = $state(
+	"Sinusrhythmus, normale PQ-Zeit, keine Hochspannungszeichen.\nZweite Zeile: Verlauf unauffällig.",
+);
+
+type ParsedSnapshot = ApiPatient | undefined;
+
+let lastParsedApi = $state<ParsedSnapshot>(undefined);
+
+let fileInputEl = $state<HTMLInputElement | null>(null);
+
+const annotatedLines = $derived.by(() => annotateDocument(rawLatin1));
+
+function applyParsedToEditors(data: ApiPatient): void {
+	patientIdInput = data.patientId ?? "";
+	firstNameInput = data.firstName ?? "";
+	lastNameInput = data.lastName ?? "";
+	birthDdMmYyyy = data.birthDate
+		? (isoDayToDdMmYyyy(data.birthDate) ?? "")
+		: "";
+	const code = genderGenderToCode(data.gender ?? "unknown");
+	genderWrite = code === "" ? "" : code;
+	const fk6228 = [...(data.rawFields["6228"] ?? [])];
+	befundeInput = fk6228.join("\n") || befundeInput;
+}
+
+async function parseRemote(): Promise<void> {
+	loading = true;
+	errorMessage = null;
+	try {
+		const res = await fetch(`/api/read?strict=${strictMode ? "1" : "0"}`, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ gdtText: rawLatin1 }),
+		});
+		const body = await res.json();
+		if (!res.ok || !body?.ok) {
+			errorMessage = body?.error ?? `HTTP ${res.status}`;
 			lastParsedApi = undefined;
-		} finally {
-			loading = false;
+			return;
 		}
+		const data = body.data as ApiPatient;
+		lastParsedApi = data;
+		applyParsedToEditors(data);
+	} catch (error) {
+		errorMessage = error instanceof Error ? error.message : "Netzwerkfehler";
+		lastParsedApi = undefined;
+	} finally {
+		loading = false;
 	}
+}
 
-	async function roundTripViaServer(): Promise<void> {
-		loading = true;
-		errorMessage = null;
-		try {
-			const lines = befundeInput.split('\n').map((l) => l.trimEnd());
-			const befundPayload = lines.length <= 1 ? (lines[0] ?? '') : lines.filter((l) => l.length > 0);
-			const body: Record<string, unknown> = {
-				patientId: patientIdInput,
-				befundText: Array.isArray(befundPayload) ? befundPayload : befundPayload,
-				options: {
-					recordType: '6310',
-					gdtVersion: '02.10',
-					receiverDeviceId: 'MTDEVICE',
-					senderSystemId: 'PVSYSTEM',
-					examinationDateDdMmYyyy: birthDdMmYyyy || undefined,
-					procedureDesignation: 'DEMO_INTERFACE',
-				},
+async function roundTripViaServer(): Promise<void> {
+	loading = true;
+	errorMessage = null;
+	try {
+		const lines = befundeInput.split("\n").map((l) => l.trimEnd());
+		const befundPayload =
+			lines.length <= 1 ? (lines[0] ?? "") : lines.filter((l) => l.length > 0);
+		const body: Record<string, unknown> = {
+			patientId: patientIdInput,
+			befundText: Array.isArray(befundPayload) ? befundPayload : befundPayload,
+			options: {
+				recordType: "6310",
+				gdtVersion: "02.10",
+				receiverDeviceId: "MTDEVICE",
+				senderSystemId: "PVSYSTEM",
+				examinationDateDdMmYyyy: birthDdMmYyyy || undefined,
+				procedureDesignation: "DEMO_INTERFACE",
+			},
+		};
+		if (firstNameInput && lastNameInput) {
+			body["demographics"] = {
+				firstName: firstNameInput,
+				lastName: lastNameInput,
+				...(birthDdMmYyyy.length >= 8
+					? { dateOfBirthDdMmYyyy: birthDdMmYyyy.slice(0, 8) }
+					: {}),
+				...(genderWrite ? { genderCode: genderWrite } : {}),
 			};
-			if (firstNameInput && lastNameInput) {
-				body['demographics'] = {
-					firstName: firstNameInput,
-					lastName: lastNameInput,
-					...(birthDdMmYyyy.length >= 8 ? { dateOfBirthDdMmYyyy: birthDdMmYyyy.slice(0, 8) } : {}),
-					...(genderWrite ? { genderCode: genderWrite } : {}),
-				};
-			}
-			const w = await fetch('/api/write', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify(body),
-			});
-			const wJson = await w.json();
-			if (!w.ok || !wJson?.latin1Base64) {
-				errorMessage = wJson?.error ?? `Schreibfehler HTTP ${w.status}`;
-				return;
-			}
-			rawLatin1 = atobSafeLatin1Utf8Bypass(wJson.latin1Base64 as string);
-
-			await parseRemote();
-			tab = 'befund';
-		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Netzwerkfehler';
-		} finally {
-			loading = false;
 		}
-	}
-
-	function atobSafeLatin1Utf8Bypass(b64: string): string {
-		const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-		return new TextDecoder('latin1').decode(bin);
-	}
-
-	async function onPickFile(files: FileList | null): Promise<void> {
-		const file = files?.[0];
-		if (!file) return;
-		loading = true;
-		errorMessage = null;
-		try {
-			const buf = await file.arrayBuffer();
-			rawLatin1 = new TextDecoder('iso-8859-1').decode(buf);
-		} finally {
-			loading = false;
+		const w = await fetch("/api/write", {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify(body),
+		});
+		const wJson = await w.json();
+		if (!w.ok || !wJson?.latin1Base64) {
+			errorMessage = wJson?.error ?? `Schreibfehler HTTP ${w.status}`;
+			return;
 		}
-	}
+		rawLatin1 = atobSafeLatin1Utf8Bypass(wJson.latin1Base64 as string);
 
-	onMount(() => {
-		void parseRemote();
-	});
+		await parseRemote();
+		tab = "befund";
+	} catch (error) {
+		errorMessage = error instanceof Error ? error.message : "Netzwerkfehler";
+	} finally {
+		loading = false;
+	}
+}
+
+function atobSafeLatin1Utf8Bypass(b64: string): string {
+	const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+	return new TextDecoder("latin1").decode(bin);
+}
+
+async function onPickFile(files: FileList | null): Promise<void> {
+	const file = files?.[0];
+	if (!file) return;
+	loading = true;
+	errorMessage = null;
+	try {
+		const buf = await file.arrayBuffer();
+		rawLatin1 = new TextDecoder("iso-8859-1").decode(buf);
+	} finally {
+		loading = false;
+	}
+}
+
+onMount(() => {
+	void parseRemote();
+});
 </script>
 
 <div class="text-foreground relative min-h-svh bg-muted/40 px-5 py-8 font-sans">
